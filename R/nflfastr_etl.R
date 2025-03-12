@@ -7,6 +7,7 @@ library(arrow)
 update_nflfastR_db <- function(dbdir = '~/.db', force_rebuild = F) {
   nflfastR::update_db(dbdir = dbdir, force_rebuild = force_rebuild)
 }
+
 # Constructor
 new_etl <- function(config_file) {
   # Initialize object
