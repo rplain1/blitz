@@ -10,6 +10,7 @@ License: What license is it under?
 Encoding: UTF-8
 LazyData: true
 Imports: 
+    config,
     DBI,
     dbplyr,
     dplyr,
@@ -18,3 +19,4 @@ Imports:
     nflreadr,
     purrr,
     RSQLite
+RoxygenNote: 7.3.2

@@ -1,0 +1,9 @@
+default:
+  database:
+    sqlite:
+      path: "~/.db/pbp_db"
+      table: "nflfastR_pbp"
+    duckdb:
+      path: "~/.db/luna.duckdb"
+      schema: "BASE"
+      table: "NFLFASTR_PBP"
