@@ -10,6 +10,9 @@ License: What license is it under?
 Encoding: UTF-8
 LazyData: true
 Imports: 
+    DBI,
     duckdb,
     nflfastR,
-    nflreadr
+    nflreadr,
+    purrr,
+    RSQLite
