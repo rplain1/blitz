@@ -17,7 +17,7 @@
 #' update_nflfastR_db()  # Updates the database in the default location
 #' update_nflfastR_db(dbdir = "data/nfl", force_rebuild = TRUE)  # Forces a rebuild
 #' }
-update_nflfastR_db <- function(
+update_pbp <- function(
   dbdir = '~/.db',
   dbname = 'luna',
   force_rebuild = FALSE,
@@ -67,17 +67,38 @@ load_data <- function(
   } else {
     # backfill or modify select values
     message(glue::glue(
-      '{format(Sys.time(), "%H:%M:%S")} | `overwrite` set to `FALSE`, updating {nrow(.data)} records'
+      '{format(Sys.time(), "%H:%M:%S")} | `seasons` provided set to {seasons}, updating {nrow(.data)} records'
     ))
 
-    DBI::dbExecute(
-      con,
-      glue::glue_sql(
-        "DELETE FROM {`schema_name`}.{`table_name`} WHERE SEASON IN ({vals*})",
-        vals = seasons,
-        .con = con
+    if (DBI::dbExistsTable(con, DBI::Id(schema_name, table_name))) {
+      # check that table exists
+      record_check <- DBI::dbGetQuery(
+        con,
+        glue::glue_sql(
+          "SELECT COUNT(*) FROM {`schema_name`}.{`table_name`} WHERE SEASON IN ({vals*})",
+          vals = seasons,
+          .con = con
+        )
       )
-    )
+      if (record_check[1, 1] > 0) {
+        # if data exists
+
+        # TODO: look into why this outputs messages for multiple years funky
+        # `seasons` provided set to 2017, updating 192340 records14:00:55 | `seasons` provided set to 2018, updating 192340 records14:00:55 | `seasons` provided set to 2019, updating 192340 records14:00:55 | `seasons` provided set to 2020, updating 192340 records
+        message(glue::glue(
+          '{format(Sys.time(), "%H:%M:%S")} | records exist for `seasons`: {seasons}, dropping existing records records'
+        ))
+
+        DBI::dbExecute(
+          con,
+          glue::glue_sql(
+            "DELETE FROM {`schema_name`}.{`table_name`} WHERE SEASON IN ({vals*})",
+            vals = seasons,
+            .con = con
+          )
+        )
+      }
+    }
 
     DBI::dbWriteTable(
       con = con,
@@ -166,34 +187,32 @@ update_nflreadr_db <- function(seasons) {
     load_data(table_name = 'PFR_ADV_REC_SEASON', seasons = seasons)
 }
 
-#TODO: this would benefit from WHERE conditions to do all years
-update_nflfastr_stats <- function() {
-  seasons = 2023:2024
+update_nflfastr_stats <- function(seasons) {
   nflfastR::calculate_stats(
     seasons = seasons,
     summary_level = "week",
     stat_type = "team"
   ) |>
-    load_data(table_name = "TEAM_STATS_WK")
+    load_data(table_name = "TEAM_STATS_WK", seasons = seasons)
 
   nflfastR::calculate_stats(
     seasons = seasons,
     summary_level = "season",
     stat_type = "team"
   ) |>
-    load_data(table_name = "TEAM_STATS_SEASON")
+    load_data(table_name = "TEAM_STATS_SEASON", seasons = seasons)
 
   nflfastR::calculate_stats(
     seasons = seasons,
     summary_level = "week",
     stat_type = "player"
   ) |>
-    load_data(table_name = "PLAYER_STATS_WK")
+    load_data(table_name = "PLAYER_STATS_WK", seasons = seasons)
 
   nflfastR::calculate_stats(
     seasons = seasons,
     summary_level = "season",
     stat_type = "player"
   ) |>
-    load_data(table_name = "PLAYER_STATS_SEASON")
+    load_data(table_name = "PLAYER_STATS_SEASON", seasons = seasons)
 }
