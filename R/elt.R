@@ -68,7 +68,6 @@ update_nflpbp_duckdb <- function(cfg = config::get(file = 'config.yml')) {
     load_data(table_name = 'NFLFASTR_PBP')
 }
 
-update_nflpbp_duckdb(cfg)
 
 update_nflreadr_db <- function() {
   nflreadr::load_teams() |> load_data(table_name = "TEAMS")
