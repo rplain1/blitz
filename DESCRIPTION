@@ -15,8 +15,11 @@ Imports:
     dbplyr,
     dplyr,
     duckdb,
+    glue,
+    lubridate,
     nflfastR,
     nflreadr,
     purrr,
-    RSQLite
+    RSQLite,
+    tibble
 RoxygenNote: 7.3.2
