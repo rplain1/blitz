@@ -4,12 +4,24 @@
 \alias{update_nflfastR_db}
 \title{Update the nflfastR Database}
 \usage{
-update_nflfastR_db(dbdir = "~/.db", force_rebuild = F)
+update_nflfastR_db(
+  dbdir = "~/.db",
+  dbname = "luna",
+  force_rebuild = FALSE,
+  tblname = DBI::Id(schema = "BASE", table = "NFLFASTR_PBP"),
+  db_connection = DBI::dbConnect(duckdb::duckdb(), Sys.getenv("DB_PATH"))
+)
 }
 \arguments{
 \item{dbdir}{Character. The directory where the database is stored. Defaults to `~/.db`.}
 
+\item{dbname}{Character. DB name, defaults to my dog `luna`}
+
 \item{force_rebuild}{Logical. If `TRUE`, forces a rebuild of the database. Defaults to `FALSE`.}
+
+\item{tblname}{S4 object or charchter. DBI::Id(schema, table) of the table location}
+
+\item{db_connection}{A `DBI::dbConnect()` object}
 }
 \value{
 No return value. Updates the nflfastR database in place.
