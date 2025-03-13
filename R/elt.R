@@ -1,3 +1,22 @@
+#' Update the nflfastR Database
+#'
+#' This function is a wrapper that updates the `nflfastR` database by
+#' calling `nflfastR::update_db()`.
+#'
+#' @param dbdir Character. The directory where the database is stored. Defaults to `~/.db`.
+#' @param force_rebuild Logical. If `TRUE`, forces a rebuild of the database. Defaults to `FALSE`.
+#'
+#' @return No return value. Updates the nflfastR database in place.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' update_nflfastR_db()  # Updates the database in the default location
+#' update_nflfastR_db(dbdir = "data/nfl", force_rebuild = TRUE)  # Forces a rebuild
+#' }
+update_nflfastR_db <- function(dbdir = '~/.db', force_rebuild = FALSE) {
+  nflfastR::update_db(dbdir = dbdir, force_rebuild = force_rebuild)
+}
 update_nflfastR_db <- function(dbdir = '~/.db', force_rebuild = F) {
   nflfastR::update_db(dbdir = dbdir, force_rebuild = force_rebuild)
 }
