@@ -4,7 +4,10 @@
 #' calling `nflfastR::update_db()`.
 #'
 #' @param dbdir Character. The directory where the database is stored. Defaults to `~/.db`.
+#' @param dbname Character. DB name, defaults to my dog `luna`
 #' @param force_rebuild Logical. If `TRUE`, forces a rebuild of the database. Defaults to `FALSE`.
+#' @param tblname S4 object or charchter. DBI::Id(schema, table) of the table location
+#' @param db_connection A `DBI::dbConnect()` object
 #'
 #' @return No return value. Updates the nflfastR database in place.
 #' @export
@@ -14,144 +17,153 @@
 #' update_nflfastR_db()  # Updates the database in the default location
 #' update_nflfastR_db(dbdir = "data/nfl", force_rebuild = TRUE)  # Forces a rebuild
 #' }
-update_nflfastR_db <- function(dbdir = '~/.db', force_rebuild = FALSE) {
-  nflfastR::update_db(dbdir = dbdir, force_rebuild = force_rebuild)
-}
-update_nflfastR_db <- function(dbdir = '~/.db', force_rebuild = F) {
-  nflfastR::update_db(dbdir = dbdir, force_rebuild = force_rebuild)
-}
-
-
-extract_pbp <- function(cfg, force_rebuild = TRUE) {
-  tryCatch(
-    {
-      sqlite_path <- cfg$database$sqlite$path
-      table <- cfg$database$sqlite$table
-
-      con <- DBI::dbConnect(RSQLite::SQLite(), sqlite_path)
-      on.exit(DBI::dbDisconnect(con), add = TRUE)
-
-      raw_data <- DBI::dbGetQuery(
-        con,
-        glue::glue_sql("SELECT * FROM {`table`};", .con = con)
-      )
-      message(glue::glue(
-        '{format(Sys.time(), "%Y-%m-%d %H:%M:%S")} --- INFO --- {nrow(raw_data)} records extracted from {table}'
-      ))
-      return(raw_data)
-    },
-    error = function(e) {
-      return(e)
-    }
+update_nflfastR_db <- function(
+  dbdir = '~/.db',
+  dbname = 'luna',
+  force_rebuild = FALSE,
+  tblname = DBI::Id(schema = "BASE", table = 'NFLFASTR_PBP'),
+  db_connection = DBI::dbConnect(duckdb::duckdb(), Sys.getenv("DB_PATH"))
+) {
+  nflfastR::update_db(
+    dbdir = dbdir,
+    dbname = dbname,
+    tblname = tblname,
+    force_rebuild = force_rebuild,
+    db_connection = db_connection
   )
-}
-
-transform_data <- function(.data) {
-  .data |>
-    tibble::as_tibble() |>
-    dplyr::mutate(
-      updated_at = Sys.time(),
-      local_updated_at = updated_at - lubridate::hours(6)
-    )
 }
 
 load_data <- function(
   .data,
   table_name,
   schema_name = "BASE",
-  db_path = Sys.getenv("DB_PATH")
+  db_path = Sys.getenv("DB_PATH"),
+  seasons = NULL
 ) {
   con <- DBI::dbConnect(duckdb::duckdb(), db_path)
   on.exit(DBI::dbDisconnect(con), add = TRUE)
+  # add metadata to database load time
+  .data <- .data |>
+    tibble::as_tibble() |>
+    dplyr::mutate(
+      updated_at = Sys.time(),
+      local_updated_at = updated_at - lubridate::hours(6)
+    )
 
   # Create schema if it doesn't exist
   DBI::dbExecute(
     con,
     glue::glue_sql("CREATE SCHEMA IF NOT EXISTS {`schema_name`}", .con = con)
   )
-  DBI::dbWriteTable(
-    con = con,
-    name = DBI::Id(schema = schema_name, table = table_name),
-    value = .data,
-    overwrite = TRUE
-  )
+
+  if (!is.numeric(seasons)) {
+    # overwrite all the existing data
+    DBI::dbWriteTable(
+      con = con,
+      name = DBI::Id(schema = schema_name, table = table_name),
+      value = .data,
+      overwrite = TRUE
+    )
+  } else {
+    # backfill or modify select values
+    message(glue::glue(
+      '{format(Sys.time(), "%H:%M:%S")} | `overwrite` set to `FALSE`, updating {nrow(.data)} records'
+    ))
+
+    DBI::dbExecute(
+      con,
+      glue::glue_sql(
+        "DELETE FROM {`schema_name`}.{`table_name`} WHERE SEASON IN ({vals*})",
+        vals = seasons,
+        .con = con
+      )
+    )
+
+    DBI::dbWriteTable(
+      con = con,
+      name = DBI::Id(schema = schema_name, table = table_name),
+      value = .data,
+      overwrite = FALSE,
+      append = TRUE
+    )
+  }
+
   message(glue::glue(
-    '{format(Sys.time(), "%Y-%m-%d %H:%M:%S")} --- INFO --- {nrow(.data)} records loaded into {schema_name}.{table_name}'
+    '{format(Sys.time(), "%H:%M:%S")} | {nrow(.data)} records loaded into {schema_name}.{table_name}'
   ))
 }
 
 
-update_nflpbp_duckdb <- function(cfg = config::get(file = 'config.yml')) {
-  extract_pbp(cfg) |>
-    transform_data() |>
-    load_data(table_name = 'NFLFASTR_PBP')
-}
-
-
-update_nflreadr_db <- function() {
+update_nflreadr_db <- function(seasons) {
   nflreadr::load_teams() |> load_data(table_name = "TEAMS")
 
-  nflreadr::load_teams() |> load_data(table_name = "TEAMS")
+  nflreadr::load_combine() |>
+    load_data(table_name = "COMBINE", seasons = seasons)
 
-  nflreadr::load_combine() |> load_data(table_name = "COMBINE")
-
-  nflreadr::load_draft_picks() |> load_data(table_name = "DRAFT_PICKS")
+  nflreadr::load_draft_picks() |>
+    load_data(table_name = "DRAFT_PICKS", seasons = seasons)
 
   nflreadr::load_contracts() |>
     dplyr::select(-cols) |>
     load_data(table_name = "CONTRACTS")
 
   nflreadr::load_espn_qbr(summary_type = "season") |>
-    load_data(table_name = "QBR_SEASON")
+    load_data(table_name = "QBR_SEASON", seasons = seasons)
 
   nflreadr::load_espn_qbr(summary_type = "week") |>
-    load_data(table_name = "QBR_WEEK")
+    load_data(table_name = "QBR_WEEK", seasons = seasons)
 
-  nflreadr::load_ff_playerids() |> load_data(table_name = "FF_PLAYERIDS")
+  nflreadr::load_ff_playerids() |>
+    load_data(table_name = "FF_PLAYERIDS")
 
-  nflreadr::load_ftn_charting() |> load_data(table_name = "FTN_CHARTING")
+  nflreadr::load_ftn_charting() |>
+    load_data(table_name = "FTN_CHARTING", seasons = seasons)
 
   nflreadr::load_nextgen_stats(stat_type = 'passing') |>
-    load_data(table_name = "NGS_PASSING")
+    load_data(table_name = "NGS_PASSING", seasons = seasons)
 
   nflreadr::load_nextgen_stats(stat_type = 'receiving') |>
-    load_data(table_name = "NGS_RECEIVING")
+    load_data(table_name = "NGS_RECEIVING", seasons = seasons)
 
   nflreadr::load_nextgen_stats(stat_type = 'rushing') |>
-    load_data(table_name = "NGS_RUSHING")
+    load_data(table_name = "NGS_RUSHING", seasons = seasons)
 
   nflreadr::load_ff_opportunity(stat_type = 'weekly') |>
-    load_data(table_name = 'FF_OPPURTUNITY_WK')
+    load_data(table_name = 'FF_OPPURTUNITY_WK', seasons = seasons)
 
   nflreadr::load_ff_opportunity(stat_type = 'pbp_pass') |>
-    load_data(table_name = 'FF_OPPURTUNITY_PASS')
+    load_data(table_name = 'FF_OPPURTUNITY_PASS', seasons = seasons)
 
   nflreadr::load_ff_opportunity(stat_type = 'pbp_rush') |>
-    load_data(table_name = 'FF_OPPURTUNITY_RUSH')
+    load_data(table_name = 'FF_OPPURTUNITY_RUSH', seasons = seasons)
 
-  nflreadr::load_officials() |> load_data(table_name = "OFFICIALS")
+  nflreadr::load_officials() |>
+    load_data(table_name = "OFFICIALS")
 
-  nflreadr::load_injuries() |> load_data(table_name = 'INJURIES')
+  nflreadr::load_injuries() |>
+    load_data(table_name = 'INJURIES', seasons = seasons)
 
-  nflreadr::load_schedules() |> load_data(table_name = "SCHEDULES")
+  nflreadr::load_schedules() |>
+    load_data(table_name = "SCHEDULES", seasons = seasons)
 
-  nflreadr::load_trades() |> load_data(table_name = "TRADES")
+  nflreadr::load_trades() |> load_data(table_name = "TRADES", seasons = seasons)
 
-  nflreadr::load_snap_counts() |> load_data(table_name = "SNAP_COUNTS")
+  nflreadr::load_snap_counts() |>
+    load_data(table_name = "SNAP_COUNTS", seasons = seasons)
 
   nflreadr::load_players() |> load_data(table_name = "PLAYERS")
 
   nflreadr::load_pfr_advstats(stat_type = 'pass', summary_level = 'season') |>
-    load_data(table_name = 'PFR_ADV_PASS')
+    load_data(table_name = 'PFR_ADV_PASS', seasons = seasons)
 
   nflreadr::load_pfr_advstats(stat_type = 'pass', summary_level = 'season') |>
-    load_data(table_name = 'PFR_ADV_PASS_SEASON')
+    load_data(table_name = 'PFR_ADV_PASS_SEASON', seasons = seasons)
 
   nflreadr::load_pfr_advstats(stat_type = 'rush', summary_level = 'season') |>
-    load_data(table_name = 'PFR_ADV_RUSH_SEASON')
+    load_data(table_name = 'PFR_ADV_RUSH_SEASON', seasons = seasons)
 
   nflreadr::load_pfr_advstats(stat_type = 'rec', summary_level = 'season') |>
-    load_data(table_name = 'PFR_ADV_REC_SEASON')
+    load_data(table_name = 'PFR_ADV_REC_SEASON', seasons = seasons)
 }
 
 #TODO: this would benefit from WHERE conditions to do all years
