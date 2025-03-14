@@ -17,6 +17,7 @@ Imports:
     lubridate,
     nflfastR,
     nflreadr,
+    stringr,
     tibble,
     tidyr
 RoxygenNote: 7.3.2
