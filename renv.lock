@@ -135,6 +135,16 @@
       ],
       "Hash": "61e097f35917d342622f21cdc79c256e"
     },
+    "config": {
+      "Package": "config",
+      "Version": "0.3.2",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Requirements": [
+        "yaml"
+      ],
+      "Hash": "8b7222e9d9eb5178eea545c0c4d33fc2"
+    },
     "cpp11": {
       "Package": "cpp11",
       "Version": "0.5.1",
@@ -797,6 +807,13 @@
         "methods"
       ],
       "Hash": "f7aa70849f72103d78c99df10eae6164"
+    },
+    "yaml": {
+      "Package": "yaml",
+      "Version": "2.3.10",
+      "Source": "Repository",
+      "Repository": "CRAN",
+      "Hash": "51dab85c6c98e50a18d7551e9d49f76c"
     }
   }
 }
