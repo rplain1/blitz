@@ -6,7 +6,7 @@
 #' @param dbdir Character. The directory where the database is stored. Defaults to `~/.db`.
 #' @param dbname Character. DB name, defaults to my dog `luna`
 #' @param force_rebuild Logical. If `TRUE`, forces a rebuild of the database. Defaults to `FALSE`.
-#' @param tblname S4 object or charchter. DBI::Id(schema, table) of the table location
+#' @param tblname name or DBI::Id(schema, table) of the table location
 #' @param db_connection A `DBI::dbConnect()` object
 #'
 #' @return No return value. Updates the nflfastR database in place.
@@ -33,17 +33,32 @@ update_pbp <- function(
   )
 }
 
+#' Update the specified database table
+#'
+#' this function will load data into the db. It can handle creating new schemas
+#' and tables, and will overwrite data if there is a specified season or set of seasons.
+#'
+#' @param df A data frame to load into the db
+#' @param table_name name of table to use in db
+#' @param schema_name name of schema to use, defaults to `"BASE"``
+#' @param db_path location of db
+#' @param seasons seasons to update when using existing database.
+#'
+#' @return No return value. Updates the specified db
+#' @export
 load_data <- function(
-  .data,
+  df,
   table_name,
   schema_name = "BASE",
   db_path = Sys.getenv("DB_PATH"),
   seasons = NULL
 ) {
+  # initialize db connection
   con <- DBI::dbConnect(duckdb::duckdb(), db_path)
   on.exit(DBI::dbDisconnect(con), add = TRUE)
+
   # add metadata to database load time
-  .data <- .data |>
+  df <- df |>
     tibble::as_tibble() |>
     dplyr::mutate(
       updated_at = Sys.time(),
@@ -61,13 +76,13 @@ load_data <- function(
     DBI::dbWriteTable(
       con = con,
       name = DBI::Id(schema = schema_name, table = table_name),
-      value = .data,
+      value = df,
       overwrite = TRUE
     )
   } else {
     # backfill or modify select values
     message(glue::glue(
-      '{format(Sys.time(), "%H:%M:%S")} | `seasons` provided set to {seasons}, updating {nrow(.data)} records'
+      '{format(Sys.time(), "%H:%M:%S")} | `seasons` provided set to {seasons}, updating {nrow(df)} records'
     ))
 
     if (DBI::dbExistsTable(con, DBI::Id(schema_name, table_name))) {
@@ -103,19 +118,29 @@ load_data <- function(
     DBI::dbWriteTable(
       con = con,
       name = DBI::Id(schema = schema_name, table = table_name),
-      value = .data,
+      value = df,
       overwrite = FALSE,
       append = TRUE
     )
   }
 
   message(glue::glue(
-    '{format(Sys.time(), "%H:%M:%S")} | {nrow(.data)} records loaded into {schema_name}.{table_name}'
+    '{format(Sys.time(), "%H:%M:%S")} | {nrow(df)} records loaded into {schema_name}.{table_name}'
   ))
 }
 
-
-update_nflreadr_db <- function(seasons) {
+#' main function to update tables that are related to `{nflreadr}`.
+#'
+#' This function will update tables based on the ENV variable `DB_PATH` that is used in
+#' `load_data()`.
+#'
+#' @param seasons numeric vector to indentify seasons to back filter for and backfill.
+#' Note: this should typically only be used with `nflfastr::most_recent_season()` or maintain
+#' the default value of `NULL`, as datasets have different years that started collecting. It is
+#' easier to do a full refresh than handle all the different conditions.
+#'
+#' @export
+update_nflreadr_db <- function(seasons = NULL) {
   nflreadr::load_teams() |> load_data(table_name = "TEAMS")
 
   nflreadr::load_combine() |>
@@ -187,6 +212,11 @@ update_nflreadr_db <- function(seasons) {
     load_data(table_name = 'PFR_ADV_REC_SEASON', seasons = seasons)
 }
 
+#' Update tables related to `nflfastR::calculate_stats()`
+#'
+#' This function will update tables that are derived from `nflfastR::calculate_stast()`.
+#'
+#' @param seasons numeric vector of seasons to specifiy.
 update_nflfastr_stats <- function(seasons) {
   nflfastR::calculate_stats(
     seasons = seasons,

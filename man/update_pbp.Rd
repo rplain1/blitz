@@ -19,7 +19,7 @@ update_pbp(
 
 \item{force_rebuild}{Logical. If `TRUE`, forces a rebuild of the database. Defaults to `FALSE`.}
 
-\item{tblname}{S4 object or charchter. DBI::Id(schema, table) of the table location}
+\item{tblname}{name or DBI::Id(schema, table) of the table location}
 
 \item{db_connection}{A `DBI::dbConnect()` object}
 }
