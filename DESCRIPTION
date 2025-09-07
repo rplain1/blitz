@@ -14,9 +14,11 @@ Imports:
     dplyr,
     duckdb,
     glue,
+    gsisdecoder,
     lubridate,
     nflfastR,
     nflreadr,
+    rlang,
     stringr,
     tibble,
     tidyr
