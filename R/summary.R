@@ -1,6 +1,6 @@
 ### Game lines
 create_game_lines_table <- function(con) {
-  dplyr::tbl(con, DBI::Id("BASE", "NFLFASTR_PBP")) |>
+  dplyr::tbl(con, DBI::Id("main", "NFLFASTR_PBP")) |>
     dplyr::group_by(season, week, game_id, season_type, home_team, away_team) |>
     dplyr::summarise(
       spread_line = max(spread_line),
@@ -70,7 +70,7 @@ create_game_lines_table <- function(con) {
 
 ### Plays ----------
 create_plays_table <- function(con) {
-  df_plays <- dplyr::tbl(con, DBI::Id("BASE", "NFLFASTR_PBP")) |>
+  df_plays <- dplyr::tbl(con, DBI::Id("main", "NFLFASTR_PBP")) |>
     dplyr::filter(play == 1, penalty == 0) |>
     dplyr::mutate(
       head_coach = dplyr::if_else(posteam == home_team, home_coach, away_coach)
@@ -92,7 +92,7 @@ create_plays_table <- function(con) {
     ) |>
     dplyr::mutate(pass_rate = passes / n)
 
-  df_passers <- dplyr::tbl(con, DBI::Id("BASE", "NFLFASTR_PBP")) |>
+  df_passers <- dplyr::tbl(con, DBI::Id("main", "NFLFASTR_PBP")) |>
     dplyr::filter(!is.na(passer_id)) |>
     dplyr::filter(play == 1, penalty == 0) |>
     dplyr::count(season, week, game_id, posteam, passer_id, passer) |>
@@ -125,7 +125,7 @@ create_summary_tables <- function(db_path = Sys.getenv("DB_PATH")) {
   write_summary_tables <- function(df, table_name) {
     DBI::dbWriteTable(
       con,
-      DBI::Id("SUMMARY", table_name),
+      DBI::Id(schema = "SUMMARY", table = table_name),
       df,
       overwrite = TRUE
     )

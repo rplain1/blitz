@@ -21,7 +21,7 @@ update_pbp <- function(
   dbdir = '~/.db',
   dbname = 'luna',
   force_rebuild = FALSE,
-  tblname = DBI::Id(schema = "BASE", table = 'NFLFASTR_PBP'),
+  tblname = "BASE.NFLFASTR_PBP",
   db_connection = DBI::dbConnect(duckdb::duckdb(), Sys.getenv("DB_PATH"))
 ) {
   nflfastR::update_db(
@@ -49,7 +49,7 @@ update_pbp <- function(
 load_data <- function(
   df,
   table_name,
-  schema_name = "BASE",
+  schema_name = "main",
   db_path = Sys.getenv("DB_PATH"),
   seasons = NULL
 ) {
@@ -101,7 +101,7 @@ load_data <- function(
         # TODO: look into why this outputs messages for multiple years funky
         # `seasons` provided set to 2017, updating 192340 records14:00:55 | `seasons` provided set to 2018, updating 192340 records14:00:55 | `seasons` provided set to 2019, updating 192340 records14:00:55 | `seasons` provided set to 2020, updating 192340 records
         message(glue::glue(
-          '{format(Sys.time(), "%H:%M:%S")} | records exist for `seasons`: {seasons}, dropping existing records records'
+          '{format(Sys.time(), "%H:%M:%S")} | records exist for `seasons`: {min(seasons)} - {max(seasons)}, dropping existing records records'
         ))
 
         DBI::dbExecute(
@@ -143,106 +143,155 @@ load_data <- function(
 update_nflreadr_db <- function(seasons = NULL) {
   nflreadr::load_teams() |> load_data(table_name = "TEAMS")
 
-  nflreadr::load_combine() |>
-    load_data(table_name = "COMBINE", seasons = seasons)
+  nflreadr::load_players() |> load_data(table_name = "PLAYERS")
 
-  nflreadr::load_draft_picks() |>
+  nflreadr::load_combine(seasons = seasons) |>
+    load_data(seasons = seasons, table_name = "COMBINE")
+
+  nflreadr::load_draft_picks(seasons = seasons) |>
     load_data(table_name = "DRAFT_PICKS", seasons = seasons)
 
   nflreadr::load_contracts() |>
     dplyr::select(-cols) |>
     load_data(table_name = "CONTRACTS")
 
-  nflreadr::load_espn_qbr(summary_type = "season") |>
+  nflreadr::load_espn_qbr(
+    seasons = seasons[seasons >= 2006],
+    summary_type = "season"
+  ) |>
     load_data(table_name = "QBR_SEASON", seasons = seasons)
 
-  nflreadr::load_espn_qbr(summary_type = "week") |>
+  nflreadr::load_espn_qbr(
+    seasons = seasons[seasons >= 2006],
+    summary_type = "week"
+  ) |>
     load_data(table_name = "QBR_WEEK", seasons = seasons)
 
   nflreadr::load_ff_playerids() |>
     load_data(table_name = "FF_PLAYERIDS")
 
-  nflreadr::load_ftn_charting() |>
+  nflreadr::load_ftn_charting(seasons = seasons[seasons >= 2022]) |>
     load_data(table_name = "FTN_CHARTING", seasons = seasons)
 
-  nflreadr::load_nextgen_stats(stat_type = 'passing') |>
+  nflreadr::load_participation(
+    seasons = seasons[
+      seasons >= 2016 & seasons < nflreadr::most_recent_season()
+    ]
+  ) |>
+    dplyr::mutate(season = as.numeric(substr(nflverse_game_id, 1, 4))) |>
+    load_data(table_name = "PARTICIPATION", seasons = seasons)
+
+  nflreadr::load_nextgen_stats(
+    stat_type = 'passing',
+    seasons = seasons[seasons >= 2016]
+  ) |>
     load_data(table_name = "NGS_PASSING", seasons = seasons)
 
-  nflreadr::load_nextgen_stats(stat_type = 'receiving') |>
+  nflreadr::load_nextgen_stats(
+    seasons = seasons[seasons >= 2016],
+    stat_type = 'receiving'
+  ) |>
     load_data(table_name = "NGS_RECEIVING", seasons = seasons)
 
-  nflreadr::load_nextgen_stats(stat_type = 'rushing') |>
+  nflreadr::load_nextgen_stats(
+    seasons = seasons[seasons >= 2016],
+    stat_type = 'rushing'
+  ) |>
     load_data(table_name = "NGS_RUSHING", seasons = seasons)
 
-  nflreadr::load_ff_opportunity(stat_type = 'weekly') |>
+  nflreadr::load_ff_opportunity(
+    seasons = seasons[seasons >= 2016],
+    stat_type = 'weekly'
+  ) |>
     load_data(table_name = 'FF_OPPURTUNITY_WK', seasons = seasons)
 
-  nflreadr::load_ff_opportunity(stat_type = 'pbp_pass') |>
+  nflreadr::load_ff_opportunity(
+    seasons = seasons[seasons >= 2016],
+    stat_type = 'pbp_pass'
+  ) |>
     load_data(table_name = 'FF_OPPURTUNITY_PASS', seasons = seasons)
 
-  nflreadr::load_ff_opportunity(stat_type = 'pbp_rush') |>
+  nflreadr::load_ff_opportunity(
+    seasons = seasons[seasons >= 2016],
+    stat_type = 'pbp_rush'
+  ) |>
     load_data(table_name = 'FF_OPPURTUNITY_RUSH', seasons = seasons)
 
-  nflreadr::load_officials() |>
-    load_data(table_name = "OFFICIALS")
+  nflreadr::load_officials(seasons = seasons[seasons >= 2015]) |>
+    load_data(table_name = "OFFICIALS", seasons = seasons)
 
-  nflreadr::load_injuries() |>
+  nflreadr::load_injuries(seasons = seasons[seasons >= 2009]) |>
     load_data(table_name = 'INJURIES', seasons = seasons)
 
-  nflreadr::load_schedules() |>
+  nflreadr::load_schedules(seasons = seasons) |>
     load_data(table_name = "SCHEDULES", seasons = seasons)
 
-  nflreadr::load_trades() |> load_data(table_name = "TRADES", seasons = seasons)
+  nflreadr::load_trades(seasons = seasons) |>
+    load_data(table_name = "TRADES", seasons = seasons)
 
-  nflreadr::load_snap_counts() |>
+  nflreadr::load_snap_counts(seasons = seasons[seasons >= 2012]) |>
     load_data(table_name = "SNAP_COUNTS", seasons = seasons)
 
-  nflreadr::load_players() |> load_data(table_name = "PLAYERS")
-
-  nflreadr::load_pfr_advstats(stat_type = 'pass', summary_level = 'season') |>
+  nflreadr::load_pfr_advstats(
+    seasons = seasons[seasons >= 2018],
+    stat_type = 'pass',
+    summary_level = 'season'
+  ) |>
     load_data(table_name = 'PFR_ADV_PASS', seasons = seasons)
 
-  nflreadr::load_pfr_advstats(stat_type = 'pass', summary_level = 'season') |>
+  nflreadr::load_pfr_advstats(
+    seasons = seasons[seasons >= 2018],
+    stat_type = 'pass',
+    summary_level = 'season'
+  ) |>
     load_data(table_name = 'PFR_ADV_PASS_SEASON', seasons = seasons)
 
-  nflreadr::load_pfr_advstats(stat_type = 'rush', summary_level = 'season') |>
+  nflreadr::load_pfr_advstats(
+    seasons = seasons[seasons >= 2018],
+    stat_type = 'rush',
+    summary_level = 'season'
+  ) |>
     load_data(table_name = 'PFR_ADV_RUSH_SEASON', seasons = seasons)
 
-  nflreadr::load_pfr_advstats(stat_type = 'rec', summary_level = 'season') |>
+  nflreadr::load_pfr_advstats(
+    seasons = seasons[seasons >= 2018],
+    stat_type = 'rec',
+    summary_level = 'season'
+  ) |>
     load_data(table_name = 'PFR_ADV_REC_SEASON', seasons = seasons)
+
+  nflreadr::load_depth_charts(seasons = seasons[seasons >= 2001]) |>
+    load_data(table_name = 'DEPTH_CHARTS', seasons = seasons)
 }
 
-#' Update tables related to `nflfastR::calculate_stats()`
+#' Update tables related to `nflreadr::calculate_stats()`
 #'
-#' This function will update tables that are derived from `nflfastR::calculate_stast()`.
+#' This function will update tables that are derived from `nflreadr::calculate_stast()
+#' which updated breaking changes in version 1.5`.
 #'
 #' @param seasons numeric vector of seasons to specifiy.
-update_nflfastr_stats <- function(seasons) {
-  nflfastR::calculate_stats(
+update_team_player_stats <- function(seasons) {
+  nflreadr::load_team_stats(
     seasons = seasons,
-    summary_level = "week",
-    stat_type = "team"
+    summary_level = "week"
   ) |>
     load_data(table_name = "TEAM_STATS_WK", seasons = seasons)
 
-  nflfastR::calculate_stats(
+  nflreadr::load_team_stats(
     seasons = seasons,
-    summary_level = "season",
-    stat_type = "team"
+    summary_level = "reg",
   ) |>
     load_data(table_name = "TEAM_STATS_SEASON", seasons = seasons)
 
-  nflfastR::calculate_stats(
+  nflreadr::load_player_stats(
     seasons = seasons,
     summary_level = "week",
-    stat_type = "player"
   ) |>
     load_data(table_name = "PLAYER_STATS_WK", seasons = seasons)
 
-  nflfastR::calculate_stats(
+  nflreadr::load_player_stats(
     seasons = seasons,
-    summary_level = "season",
-    stat_type = "player"
+    summary_level = "reg",
   ) |>
     load_data(table_name = "PLAYER_STATS_SEASON", seasons = seasons)
 }

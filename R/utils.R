@@ -5,6 +5,8 @@ connect <- function() {
   DBI::dbConnect(duckdb::duckdb(), Sys.getenv("DB_PATH"))
 }
 
+# connect to the db
+
 #' @export
 tblx <- function(schema, table) {
   if (!exists("con", envir = .GlobalEnv)) {
@@ -13,10 +15,14 @@ tblx <- function(schema, table) {
           Please create a connection before using this function."
     )
   }
+
+  schema <- rlang::as_string(rlang::ensym(schema))
+  table <- rlang::as_string(rlang::ensym(table))
+
   schema <- stringr::str_to_upper(schema)
   table <- stringr::str_to_upper(table)
   dplyr::tbl(
-    get("db_connection", envir = .GlobalEnv),
+    get("con", envir = .GlobalEnv),
     DBI::Id(schema = schema, table = table)
   )
 }
