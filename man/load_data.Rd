@@ -7,7 +7,7 @@
 load_data(
   df,
   table_name,
-  schema_name = "BASE",
+  schema_name = "main",
   db_path = Sys.getenv("DB_PATH"),
   seasons = NULL
 )

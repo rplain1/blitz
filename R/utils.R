@@ -2,11 +2,10 @@
 #'
 #' @export
 connect <- function() {
-  DBI::dbConnect(duckdb::duckdb(), Sys.getenv("DB_PATH"))
+  connections::connection_open(duckdb::duckdb(), Sys.getenv("DB_PATH"))
 }
 
 # connect to the db
-
 #' @export
 tblx <- function(schema, table) {
   if (!exists("con", envir = .GlobalEnv)) {

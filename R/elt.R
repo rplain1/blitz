@@ -21,7 +21,7 @@ update_pbp <- function(
   dbdir = '~/.db',
   dbname = 'luna',
   force_rebuild = FALSE,
-  tblname = "BASE.NFLFASTR_PBP",
+  tblname = "NFLFASTR_PBP",
   db_connection = DBI::dbConnect(duckdb::duckdb(), Sys.getenv("DB_PATH"))
 ) {
   nflfastR::update_db(
@@ -173,13 +173,15 @@ update_nflreadr_db <- function(seasons = NULL) {
   nflreadr::load_ftn_charting(seasons = seasons[seasons >= 2022]) |>
     load_data(table_name = "FTN_CHARTING", seasons = seasons)
 
-  nflreadr::load_participation(
-    seasons = seasons[
-      seasons >= 2016 & seasons < nflreadr::most_recent_season()
-    ]
-  ) |>
-    dplyr::mutate(season = as.numeric(substr(nflverse_game_id, 1, 4))) |>
-    load_data(table_name = "PARTICIPATION", seasons = seasons)
+  if (all(seasons != nflreadr::most_recent_season())) {
+    nflreadr::load_participation(
+      seasons = seasons[
+        seasons >= 2016 & seasons < nflreadr::most_recent_season()
+      ]
+    ) |>
+      dplyr::mutate(season = as.numeric(substr(nflverse_game_id, 1, 4))) |>
+      load_data(table_name = "PARTICIPATION", seasons = seasons)
+  }
 
   nflreadr::load_nextgen_stats(
     stat_type = 'passing',

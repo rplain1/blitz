@@ -8,7 +8,7 @@ update_pbp(
   dbdir = "~/.db",
   dbname = "luna",
   force_rebuild = FALSE,
-  tblname = DBI::Id(schema = "BASE", table = "NFLFASTR_PBP"),
+  tblname = "BASE.NFLFASTR_PBP",
   db_connection = DBI::dbConnect(duckdb::duckdb(), Sys.getenv("DB_PATH"))
 )
 }
