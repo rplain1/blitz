@@ -15,15 +15,13 @@ Imports:
     dplyr,
     duckdb,
     glue,
-    gsisdecoder,
     lubridate,
     nflfastR,
     nflreadr,
-    rlang,
-    stringr,
     tibble,
     tidyr
-RoxygenNote: 7.3.2
-Suggests: 
+RoxygenNote: 7.3.3
+Suggests:
+    devtools,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3

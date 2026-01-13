@@ -1,3 +1,6 @@
+# Suppress R CMD check notes for NSE column names
+utils::globalVariables(c("cols", "nflverse_game_id", "updated_at"))
+
 #' Update the nflfastR Database
 #'
 #' This function is a wrapper that updates the `nflfastR` database by
@@ -7,29 +10,32 @@
 #' @param dbname Character. DB name, defaults to my dog `luna`
 #' @param force_rebuild Logical. If `TRUE`, forces a rebuild of the database. Defaults to `FALSE`.
 #' @param tblname name or DBI::Id(schema, table) of the table location
-#' @param db_connection A `DBI::dbConnect()` object
+#' @param db_path Character. Path to the DuckDB database file. Defaults to `DB_PATH` env var.
 #'
 #' @return No return value. Updates the nflfastR database in place.
 #' @export
 #'
 #' @examples
 #' \dontrun{
-#' update_nflfastR_db()  # Updates the database in the default location
-#' update_nflfastR_db(dbdir = "data/nfl", force_rebuild = TRUE)  # Forces a rebuild
+#' update_pbp()  # Updates the database in the default location
+#' update_pbp(force_rebuild = TRUE)  # Forces a rebuild
 #' }
 update_pbp <- function(
   dbdir = '~/.db',
   dbname = 'luna',
   force_rebuild = FALSE,
   tblname = "NFLFASTR_PBP",
-  db_connection = DBI::dbConnect(duckdb::duckdb(), Sys.getenv("DB_PATH"))
+  db_path = Sys.getenv("DB_PATH")
 ) {
+  con <- DBI::dbConnect(duckdb::duckdb(), db_path)
+  on.exit(DBI::dbDisconnect(con), add = TRUE)
+
   nflfastR::update_db(
     dbdir = dbdir,
     dbname = dbname,
     tblname = tblname,
     force_rebuild = force_rebuild,
-    db_connection = db_connection
+    db_connection = con
   )
 }
 
@@ -81,8 +87,13 @@ load_data <- function(
     )
   } else {
     # backfill or modify select values
+    seasons_label <- if (length(seasons) == 1) {
+      seasons
+    } else {
+      paste0(min(seasons), "-", max(seasons))
+    }
     message(glue::glue(
-      '{format(Sys.time(), "%H:%M:%S")} | `seasons` provided set to {seasons}, updating {nrow(df)} records'
+      '{format(Sys.time(), "%H:%M:%S")} | `seasons` provided set to {seasons_label}, updating {nrow(df)} records'
     ))
 
     if (DBI::dbExistsTable(con, DBI::Id(schema_name, table_name))) {
@@ -96,10 +107,6 @@ load_data <- function(
         )
       )
       if (record_check[1, 1] > 0) {
-        # if data exists
-
-        # TODO: look into why this outputs messages for multiple years funky
-        # `seasons` provided set to 2017, updating 192340 records14:00:55 | `seasons` provided set to 2018, updating 192340 records14:00:55 | `seasons` provided set to 2019, updating 192340 records14:00:55 | `seasons` provided set to 2020, updating 192340 records
         message(glue::glue(
           '{format(Sys.time(), "%H:%M:%S")} | records exist for `seasons`: {min(seasons)} - {max(seasons)}, dropping existing records records'
         ))
@@ -129,7 +136,7 @@ load_data <- function(
   ))
 }
 
-#' main function to update tables that are related to `{nflreadr}`.
+#' Update nflreadr tables in the database
 #'
 #' This function will update tables based on the ENV variable `DB_PATH` that is used in
 #' `load_data()`.

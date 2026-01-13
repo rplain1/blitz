@@ -1,4 +1,51 @@
-### Game lines
+# Suppress R CMD check notes for NSE column names
+utils::globalVariables(c(
+  # game_lines columns
+  "away_score",
+  "away_team",
+  "game_id",
+  "home_away",
+  "home_score",
+  "home_team",
+  "implied_score",
+  "outcome",
+  "result",
+  "score",
+  "season",
+  "season_type",
+  "spread_line",
+  "team",
+  "total_line",
+  "total_score",
+  "week",
+
+  # plays columns
+  "away_coach",
+  "epa",
+  "head_coach",
+  "home_coach",
+  "n",
+  "new_coach",
+  "new_qb",
+  "pass",
+  "pass_rate",
+  "passer",
+  "passer_id",
+  "passes",
+  "penalty",
+  "play",
+  "posteam",
+  "rn"
+))
+
+#' Create game lines summary table
+#'
+#' Aggregates play-by-play data into game-level records with betting lines,
+#' scores, outcomes, and implied scores for each team.
+#'
+#' @param con A DBI connection object to the database.
+#' @return A tibble with game-level betting and scoring data per team.
+#' @keywords internal
 create_game_lines_table <- function(con) {
   dplyr::tbl(con, DBI::Id("main", "NFLFASTR_PBP")) |>
     dplyr::group_by(season, week, game_id, season_type, home_team, away_team) |>
@@ -68,7 +115,14 @@ create_game_lines_table <- function(con) {
   return(df)
 }
 
-### Plays ----------
+#' Create plays summary table
+#'
+#' Aggregates play-by-play data into game-level offensive statistics including
+#' play counts, pass rates, EPA metrics, and flags for coaching/QB changes.
+#'
+#' @param con A DBI connection object to the database.
+#' @return A tibble with game-level offensive stats and change indicators.
+#' @keywords internal
 create_plays_table <- function(con) {
   df_plays <- dplyr::tbl(con, DBI::Id("main", "NFLFASTR_PBP")) |>
     dplyr::filter(play == 1, penalty == 0) |>
@@ -98,7 +152,7 @@ create_plays_table <- function(con) {
     dplyr::count(season, week, game_id, posteam, passer_id, passer) |>
     dplyr::collect() |>
     dplyr::group_by(posteam, game_id) |>
-    dplyr::arrange(desc(n), .by_group = TRUE) |>
+    dplyr::arrange(dplyr::desc(n), .by_group = TRUE) |>
     dplyr::mutate(rn = dplyr::row_number()) |>
     dplyr::filter(rn == 1) |>
     dplyr::ungroup() |>
@@ -120,7 +174,20 @@ create_plays_table <- function(con) {
 }
 
 
-# main functions ------------
+#' Create summary tables in the database
+#'
+#' Generates derived summary tables from the play-by-play data and writes them
+#' to the SUMMARY schema. Creates `GAME_LINES` (betting lines and outcomes) and
+#' `PLAY_COUNTS` (offensive stats and coaching changes) tables.
+#'
+#' @param db_path Path to the DuckDB database file. Defaults to `DB_PATH` env var.
+#' @return NULL (invisibly). Tables are written to the database.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' create_summary_tables()
+#' }
 create_summary_tables <- function(db_path = Sys.getenv("DB_PATH")) {
   write_summary_tables <- function(df, table_name) {
     DBI::dbWriteTable(

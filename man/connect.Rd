@@ -2,10 +2,16 @@
 % Please edit documentation in R/utils.R
 \name{connect}
 \alias{connect}
-\title{connect to this db yo}
+\title{Open a read-only connection to the database}
 \usage{
-connect()
+connect(db_path = Sys.getenv("DB_PATH"))
+}
+\arguments{
+\item{db_path}{Path to the DuckDB database file. Defaults to `DB_PATH` env var.}
+}
+\value{
+A DBI connection object
 }
 \description{
-connect to this db yo
+Open a read-only connection to the database
 }

@@ -2,7 +2,7 @@
 % Please edit documentation in R/elt.R
 \name{update_nflreadr_db}
 \alias{update_nflreadr_db}
-\title{main function to update tables that are related to `{nflreadr}`.}
+\title{Update nflreadr tables in the database}
 \usage{
 update_nflreadr_db(seasons = NULL)
 }
