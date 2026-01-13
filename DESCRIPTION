@@ -18,7 +18,8 @@ Imports:
     lubridate,
     nflfastR,
     nflreadr,
-    tibble
+    tibble,
+    tidyr
 RoxygenNote: 7.3.3
 Suggests:
     devtools,
