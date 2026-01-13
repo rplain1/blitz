@@ -81,8 +81,13 @@ load_data <- function(
     )
   } else {
     # backfill or modify select values
+    seasons_label <- if (length(seasons) == 1) {
+      seasons
+    } else {
+      paste0(min(seasons), "-", max(seasons))
+    }
     message(glue::glue(
-      '{format(Sys.time(), "%H:%M:%S")} | `seasons` provided set to {seasons}, updating {nrow(df)} records'
+      '{format(Sys.time(), "%H:%M:%S")} | `seasons` provided set to {seasons_label}, updating {nrow(df)} records'
     ))
 
     if (DBI::dbExistsTable(con, DBI::Id(schema_name, table_name))) {
@@ -96,10 +101,6 @@ load_data <- function(
         )
       )
       if (record_check[1, 1] > 0) {
-        # if data exists
-
-        # TODO: look into why this outputs messages for multiple years funky
-        # `seasons` provided set to 2017, updating 192340 records14:00:55 | `seasons` provided set to 2018, updating 192340 records14:00:55 | `seasons` provided set to 2019, updating 192340 records14:00:55 | `seasons` provided set to 2020, updating 192340 records
         message(glue::glue(
           '{format(Sys.time(), "%H:%M:%S")} | records exist for `seasons`: {min(seasons)} - {max(seasons)}, dropping existing records records'
         ))
