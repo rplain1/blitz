@@ -1,3 +1,6 @@
+# Suppress R CMD check notes for NSE column names
+utils::globalVariables(c("cols", "nflverse_game_id", "updated_at"))
+
 #' Update the nflfastR Database
 #'
 #' This function is a wrapper that updates the `nflfastR` database by
@@ -133,7 +136,7 @@ load_data <- function(
   ))
 }
 
-#' main function to update tables that are related to `{nflreadr}`.
+#' Update nflreadr tables in the database
 #'
 #' This function will update tables based on the ENV variable `DB_PATH` that is used in
 #' `load_data()`.
