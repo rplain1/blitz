@@ -10,12 +10,19 @@ License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 Imports:
+    DBI,
+    dplyr,
     duckdb,
-    nflreadr,
+    glue,
+    lubridate,
     nflfastR,
-    devtools,
+    nflreadr,
     connections,
+    rlang,
+    stringr,
+    tibble
 RoxygenNote: 7.3.2
 Suggests:
+    devtools,
     testthat (>= 3.0.0)
 Config/testthat/edition: 3
