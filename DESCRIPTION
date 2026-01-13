@@ -19,7 +19,7 @@ Imports:
     nflfastR,
     nflreadr,
     tibble
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 Suggests:
     devtools,
     testthat (>= 3.0.0)

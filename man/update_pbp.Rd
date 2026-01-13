@@ -8,8 +8,8 @@ update_pbp(
   dbdir = "~/.db",
   dbname = "luna",
   force_rebuild = FALSE,
-  tblname = "BASE.NFLFASTR_PBP",
-  db_connection = DBI::dbConnect(duckdb::duckdb(), Sys.getenv("DB_PATH"))
+  tblname = "NFLFASTR_PBP",
+  db_path = Sys.getenv("DB_PATH")
 )
 }
 \arguments{
@@ -21,7 +21,7 @@ update_pbp(
 
 \item{tblname}{name or DBI::Id(schema, table) of the table location}
 
-\item{db_connection}{A `DBI::dbConnect()` object}
+\item{db_path}{Character. Path to the DuckDB database file. Defaults to `DB_PATH` env var.}
 }
 \value{
 No return value. Updates the nflfastR database in place.
@@ -32,7 +32,7 @@ calling `nflfastR::update_db()`.
 }
 \examples{
 \dontrun{
-update_nflfastR_db()  # Updates the database in the default location
-update_nflfastR_db(dbdir = "data/nfl", force_rebuild = TRUE)  # Forces a rebuild
+update_pbp()  # Updates the database in the default location
+update_pbp(force_rebuild = TRUE)  # Forces a rebuild
 }
 }
