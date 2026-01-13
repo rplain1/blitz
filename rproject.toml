@@ -14,6 +14,7 @@ dependencies = [
     "nflfastR",
     "devtools",
     "connections",
+    "gsisdecoder",
 ]
 
 # A list of packages to install and any additional configuration

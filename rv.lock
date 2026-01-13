@@ -463,6 +463,15 @@ force_source = false
 dependencies = []
 
 [[packages]]
+name = "gsisdecoder"
+version = "0.0.1"
+source = { repository = "https://packagemanager.posit.co/cran/latest" }
+force_source = false
+dependencies = [
+    "Rcpp",
+]
+
+[[packages]]
 name = "highr"
 version = "0.11"
 source = { repository = "https://packagemanager.posit.co/cran/latest" }
