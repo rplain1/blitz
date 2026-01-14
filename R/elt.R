@@ -59,11 +59,11 @@ load_data <- function(
   db_path = Sys.getenv("DB_PATH"),
   seasons = NULL
 ) {
-  # initialize db connection
+
   con <- DBI::dbConnect(duckdb::duckdb(), db_path)
   on.exit(DBI::dbDisconnect(con), add = TRUE)
 
-  # add metadata to database load time
+
   df <- df |>
     tibble::as_tibble() |>
     dplyr::mutate(
@@ -71,14 +71,14 @@ load_data <- function(
       local_updated_at = updated_at - lubridate::hours(6)
     )
 
-  # Create schema if it doesn't exist
   DBI::dbExecute(
     con,
     glue::glue_sql("CREATE SCHEMA IF NOT EXISTS {`schema_name`}", .con = con)
   )
 
+  full_table_name <- paste0(schema_name, ".", table_name)
+
   if (!is.numeric(seasons)) {
-    # overwrite all the existing data
     DBI::dbWriteTable(
       con = con,
       name = DBI::Id(schema = schema_name, table = table_name),
@@ -86,18 +86,17 @@ load_data <- function(
       overwrite = TRUE
     )
   } else {
-    # backfill or modify select values
     seasons_label <- if (length(seasons) == 1) {
-      seasons
+      as.character(seasons)
     } else {
       paste0(min(seasons), "-", max(seasons))
     }
-    message(glue::glue(
-      '{format(Sys.time(), "%H:%M:%S")} | `seasons` provided set to {seasons_label}, updating {nrow(df)} records'
-    ))
+
+    cli::cli_alert_info(
+      "Updating {.field {full_table_name}} for season{?s} {.val {seasons_label}} ({.val {nrow(df)}} records)"
+    )
 
     if (DBI::dbExistsTable(con, DBI::Id(schema_name, table_name))) {
-      # check that table exists
       record_check <- DBI::dbGetQuery(
         con,
         glue::glue_sql(
@@ -106,10 +105,11 @@ load_data <- function(
           .con = con
         )
       )
+
       if (record_check[1, 1] > 0) {
-        message(glue::glue(
-          '{format(Sys.time(), "%H:%M:%S")} | records exist for `seasons`: {min(seasons)} - {max(seasons)}, dropping existing records records'
-        ))
+        cli::cli_alert_warning(
+          "Dropping {.val {record_check[1, 1]}} existing record{?s} for season{?s} {.val {seasons_label}}"
+        )
 
         DBI::dbExecute(
           con,
@@ -131,9 +131,9 @@ load_data <- function(
     )
   }
 
-  message(glue::glue(
-    '{format(Sys.time(), "%H:%M:%S")} | {nrow(df)} records loaded into {schema_name}.{table_name}'
-  ))
+  cli::cli_alert_success(
+    "Loaded {.val {nrow(df)}} record{?s} into {.field {full_table_name}}"
+  )
 }
 
 #' Safely load and store nflreadr data
