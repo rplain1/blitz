@@ -12,7 +12,11 @@ Note: this should typically only be used with `nflfastr::most_recent_season()` o
 the default value of `NULL`, as datasets have different years that started collecting. It is
 easier to do a full refresh than handle all the different conditions.}
 }
+\value{
+Invisibly returns a list with `success` and `failed` table names
+}
 \description{
 This function will update tables based on the ENV variable `DB_PATH` that is used in
-`load_data()`.
+`load_data()`. Each table load is attempted independently - if one fails, the function
+logs the error and continues with the remaining tables.
 }

@@ -7,9 +7,13 @@
 update_team_player_stats(seasons)
 }
 \arguments{
-\item{seasons}{numeric vector of seasons to specifiy.}
+\item{seasons}{numeric vector of seasons to specify.}
+}
+\value{
+Invisibly returns a list with `success` and `failed` table names
 }
 \description{
-This function will update tables that are derived from `nflreadr::calculate_stast()
-which updated breaking changes in version 1.5`.
+This function will update tables that are derived from `nflreadr::calculate_stats()`
+which updated breaking changes in version 1.5. Each table load is attempted
+independently - if one fails, the function logs the error and continues.
 }
