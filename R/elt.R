@@ -39,6 +39,48 @@ update_pbp <- function(
   )
 }
 
+#' Align a database table's schema with an incoming data frame
+#'
+#' Internal helper that adds any columns present in `df` but missing from
+#' the target table (e.g. new columns added upstream by nflreadr), filling
+#' existing rows with `NULL` for the new columns. This lets season-scoped
+#' incremental loads keep working after an upstream base table schema
+#' change, without requiring a full table rebuild.
+#'
+#' @param con A DBI connection
+#' @param schema_name name of schema
+#' @param table_name name of table
+#' @param df incoming data frame
+#'
+#' @return Invisible NULL
+#' @keywords internal
+.align_table_schema <- function(con, schema_name, table_name, df) {
+  existing_cols <- DBI::dbListFields(
+    con,
+    DBI::Id(schema = schema_name, table = table_name)
+  )
+  new_cols <- setdiff(names(df), existing_cols)
+
+  if (length(new_cols) > 0) {
+    cli::cli_alert_warning(
+      "Upstream schema change detected: adding {length(new_cols)} new column{?s} to {.field {schema_name}.{table_name}} ({.field {new_cols}})"
+    )
+
+    for (col in new_cols) {
+      col_type <- DBI::dbDataType(con, df[[col]])
+      DBI::dbExecute(
+        con,
+        glue::glue_sql(
+          "ALTER TABLE {`schema_name`}.{`table_name`} ADD COLUMN {`col`} {DBI::SQL(col_type)}",
+          .con = con
+        )
+      )
+    }
+  }
+
+  invisible(NULL)
+}
+
 #' Update the specified database table
 #'
 #' this function will load data into the db. It can handle creating new schemas
@@ -97,6 +139,8 @@ load_data <- function(
     )
 
     if (DBI::dbExistsTable(con, DBI::Id(schema_name, table_name))) {
+      .align_table_schema(con, schema_name, table_name, df)
+
       record_check <- DBI::dbGetQuery(
         con,
         glue::glue_sql(
